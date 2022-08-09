@@ -67,7 +67,7 @@ String units = "metric";
 String lon;
 String lat;
 
-String googleKey = "AIzaSyA-kDl8N3GZwcSD1ASdDoRSpoJi-ptREiY";
+String googleKey = "xxxxxxxxxxxxxxxxx";
 //----------------------------------------
 
 //----------------------------------------Variable declaration for the json data and defining the ArduinoJson(DynamicJsonBuffer)
@@ -131,7 +131,7 @@ void Get_Weather_Data()
 {
   if (WiFi.status() == WL_CONNECTED)
   {
-    if (!lon.length() && !lat.length())
+    if (!lon.length() && !lat.length()) // if no data from google geolocation use defalse location
     {
       //__________________________________________________________________________________________________Get longitude, latitude and timezone offset
       //----------------------------------------If using a city name
@@ -182,7 +182,21 @@ void Get_Weather_Data()
     }
     else
     {
-      Serial.println("Already has Latitude and Longitude from google geolocation\tLat:" + lat + "\tLon:" + lon);
+      Serial.println("Already has Latitude and Longitude from google geolocation\tLat:" + lat + "\tLon:" + lon + "\n--------------------\nGet city name and timezone\n--------------------");
+      String current_serverPath = "http://api.openweathermap.org/data/2.5/weather?lat=" + lat + "&lon=" + lon + "&APPID=" + openWeatherMapApiKey;
+      strjsonBuffer = httpGETRequest(current_serverPath.c_str());
+      JsonObject &root = jsonBuffer.parseObject(strjsonBuffer);
+
+      // Test if parsing succeeds.
+      if (root.success())
+      {
+        String cityname = root["name"];
+        city = cityname;
+        Serial.println(cityname);
+      }
+      timezone_offset = root["timezone"];
+      jsonBuffer.clear();
+      Set_Time_and_Date();
     }
     //__________________________________________________________________________________________________Get current weather data and weather forecast data for the following days
     //----------------------------------------Get current weather data
@@ -190,7 +204,7 @@ void Get_Weather_Data()
 
     Serial.println("Get weather data from openweathermap...");
     strjsonBufferCF = httpGETRequest(current_forecast_serverPath.c_str());
-    // Serial.println(strjsonBuffer);
+    // Serial.println(strjsonBufferCF);
     JsonObject &rootCF = jsonBuffer.parseObject(strjsonBufferCF);
 
     // Test if parsing succeeds.
@@ -279,6 +293,7 @@ void Get_Weather_Data()
       analogWrite(B, 0);
     }
     Serial.println();
+    Serial.println("---- " + city + " ----"); // show current city
     Serial.println("Current weather data");
     Serial.print("weather : ");
     Serial.println(current_weather);
@@ -510,21 +525,19 @@ String getWifiJsonString()
       json += "\"signalStrength\": ";
       json += WiFi.RSSI(i);
       json += "\n";
-
+      Serial.println("macAddress:" + WiFi.BSSIDstr(i) + "\tsignalStrength" + WiFi.RSSI(i));
       if (i < n - 1)
       {
-        Serial.println("},");
         json += "},\n";
       }
       else
       {
-        Serial.println("}");
         json += "}\n";
       }
     }
     json += ("]\n");
     json += ("}\n");
   }
-  Serial.println(json);
+  // Serial.println(json);
   return json;
 }
