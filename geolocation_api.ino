@@ -67,7 +67,7 @@ String units = "metric";
 String lon;
 String lat;
 
-String googleKey = "xxxxxxxxxxxxxxxxx";
+String googleKey = "AIzaSyClgL8nocqG0T2Ej9rQk3W_fmz6jXy7SXA";
 //----------------------------------------
 
 //----------------------------------------Variable declaration for the json data and defining the ArduinoJson(DynamicJsonBuffer)
