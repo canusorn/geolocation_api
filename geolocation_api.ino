@@ -64,6 +64,8 @@ String openWeatherMapApiKey = "8f1fbcd3c4f818ddc07b09bba424e3fe";
 String city = "Chiang Mai";
 String countryCode = "TH";
 String units = "metric";
+String lon;
+String lat;
 
 String googleKey = "AIzaSyA-kDl8N3GZwcSD1ASdDoRSpoJi-ptREiY";
 //----------------------------------------
@@ -129,49 +131,59 @@ void Get_Weather_Data()
 {
   if (WiFi.status() == WL_CONNECTED)
   {
-    //__________________________________________________________________________________________________Get longitude, latitude and timezone offset
-    //----------------------------------------If using a city name
-    String current_serverPath = "http://api.openweathermap.org/data/2.5/weather?q=" + city + "," + countryCode + "&units=" + units + "&APPID=" + openWeatherMapApiKey;
-    //----------------------------------------
-
-    //----------------------------------------If using a city ID
-    // String current_serverPath = "http://api.openweathermap.org/data/2.5/weather?id=" + city + "&units=" + units + "&APPID=" + openWeatherMapApiKey;
-    //----------------------------------------
-
-    Serial.println("--------------------");
-    Serial.println("Get longitude, latitude & timezone offset from openweathermap...");
-    Serial.println();
-    strjsonBuffer = httpGETRequest(current_serverPath.c_str());
-    // Serial.println(strjsonBuffer);
-    JsonObject &root = jsonBuffer.parseObject(strjsonBuffer);
-
-    // Test if parsing succeeds.
-    if (!root.success())
+    if (!lon.length() && !lat.length())
     {
-      Serial.println("parseObject() failed");
-      delay(500);
-      return;
+      //__________________________________________________________________________________________________Get longitude, latitude and timezone offset
+      //----------------------------------------If using a city name
+      String current_serverPath = "http://api.openweathermap.org/data/2.5/weather?q=" + city + "," + countryCode + "&units=" + units + "&APPID=" + openWeatherMapApiKey;
+      //----------------------------------------
+
+      //----------------------------------------If using a city ID
+      // String current_serverPath = "http://api.openweathermap.org/data/2.5/weather?id=" + city + "&units=" + units + "&APPID=" + openWeatherMapApiKey;
+      //----------------------------------------
+
+      Serial.println("--------------------");
+      Serial.println("Get longitude, latitude & timezone offset from openweathermap...");
+      Serial.println();
+      strjsonBuffer = httpGETRequest(current_serverPath.c_str());
+      // Serial.println(strjsonBuffer);
+      JsonObject &root = jsonBuffer.parseObject(strjsonBuffer);
+
+      // Test if parsing succeeds.
+      if (!root.success())
+      {
+        Serial.println("parseObject() failed");
+        delay(500);
+        return;
+      }
+
+      String longtitude = root["coord"]["lon"];
+      String latitude = root["coord"]["lat"];
+
+      lon = longtitude;
+      lat = latitude;
+
+      timezone_offset = root["timezone"];
+
+      Serial.println();
+      Serial.print("Lon : ");
+      Serial.println(lon);
+      Serial.print("Lat : ");
+      Serial.println(lat);
+      Serial.print("Timezone offset : ");
+      Serial.println(timezone_offset);
+      Serial.println();
+
+      jsonBuffer.clear();
+
+      Serial.println("Set the Date and Time from the Internet...");
+      Set_Time_and_Date();
+      //__________________________________________________________________________________________________
     }
-
-    String lon = root["coord"]["lon"];
-    String lat = root["coord"]["lat"];
-    timezone_offset = root["timezone"];
-
-    Serial.println();
-    Serial.print("Lon : ");
-    Serial.println(lon);
-    Serial.print("Lat : ");
-    Serial.println(lat);
-    Serial.print("Timezone offset : ");
-    Serial.println(timezone_offset);
-    Serial.println();
-
-    jsonBuffer.clear();
-
-    Serial.println("Set the Date and Time from the Internet...");
-    Set_Time_and_Date();
-    //__________________________________________________________________________________________________
-
+    else
+    {
+      Serial.println("Already has Latitude and Longitude from google geolocation\tLat:" + lat + "\tLon:" + lon);
+    }
     //__________________________________________________________________________________________________Get current weather data and weather forecast data for the following days
     //----------------------------------------Get current weather data
     String current_forecast_serverPath = "http://api.openweathermap.org/data/2.5/onecall?lat=" + lat + "&lon=" + lon + "&units=" + units + "&exclude=hourly&APPID=" + openWeatherMapApiKey;
@@ -341,55 +353,6 @@ void Get_Weather_Data()
 }
 //=====================================================================================
 
-//=====================================================================================Get Coordinate from google geolocationApi
-void Get_location()
-{
-  if (WiFi.status() == WL_CONNECTED)
-  {
-    std::unique_ptr<BearSSL::WiFiClientSecure> client(new BearSSL::WiFiClientSecure);
-    client->setInsecure();
-    HTTPClient https;
-
-    String url = "https://www.googleapis.com/geolocation/v1/geolocate?key=" + googleKey;
-    String json = "{\"wifiAccessPoints\": [{\"macAddress\": \"F4:09:D8:B7:46:25\",\"signalStrength\": -54,\"signalToNoiseRatio\": 0},{\"macAddress\": \"74:DA:38:DB:E7:C0\",\"signalStrength\": -43,\"signalToNoiseRatio\": 0}]}";
-
-    Serial.print("[HTTPS] begin...\n");
-    if (https.begin(*client, url))
-    { // HTTPS
-
-      Serial.print("[HTTPS] POST...\n");
-      https.addHeader("Content-Type", "application/json");
-      // start connection and send HTTP header
-      int httpCode = https.POST(json);
-
-      // httpCode will be negative on error
-      if (httpCode > 0)
-      {
-        // HTTP header has been send and Server response header has been handled
-        Serial.printf("[HTTPS] POST... code: %d\n", httpCode);
-
-        // file found at server
-        if (httpCode == HTTP_CODE_OK)
-        {
-          String payload = https.getString();
-          Serial.println(payload);
-        }
-      }
-      else
-      {
-        Serial.printf("[HTTPS] POST... failed, error: %s\n", https.errorToString(httpCode).c_str());
-      }
-
-      https.end();
-    }
-    else
-    {
-      Serial.printf("[HTTPS] Unable to connect\n");
-    }
-  }
-}
-//=====================================================================================
-
 //=====================================================================================httpGETRequest
 String httpGETRequest(const char *serverName)
 {
@@ -461,4 +424,67 @@ void Set_Time_and_Date()
   // Configure the library to update / sync every day (for hardware RTC)
   // timelib_set_provider(time_provider, TIMELIB_SECS_PER_DAY);
   Serial.println("Setting Date and Time from Internet is successful.");
+}
+
+
+//=====================================================================================Get Coordinate from google geolocationApi
+void Get_location()
+{
+  if (WiFi.status() == WL_CONNECTED)
+  {
+    std::unique_ptr<BearSSL::WiFiClientSecure> client(new BearSSL::WiFiClientSecure);
+    client->setInsecure();
+    HTTPClient https;
+
+    String url = "https://www.googleapis.com/geolocation/v1/geolocate?key=" + googleKey;
+    String json = "{\"wifiAccessPoints\": [{\"macAddress\": \"F4:09:D8:B7:46:25\",\"signalStrength\": -54,\"signalToNoiseRatio\": 0},{\"macAddress\": \"74:DA:38:DB:E7:C0\",\"signalStrength\": -43,\"signalToNoiseRatio\": 0}]}";
+
+    Serial.print("[HTTPS] begin...\n");
+    if (https.begin(*client, url))
+    { // HTTPS
+
+      Serial.print("[HTTPS] POST...\n");
+      https.addHeader("Content-Type", "application/json");
+      // start connection and send HTTP header
+      int httpCode = https.POST(json);
+
+      // httpCode will be negative on error
+      if (httpCode > 0)
+      {
+        // HTTP header has been send and Server response header has been handled
+        Serial.printf("[HTTPS] POST... code: %d\n", httpCode);
+
+        // file found at server
+        if (httpCode == HTTP_CODE_OK)
+        {
+          String payload = https.getString();
+          // Serial.println(payload);
+
+          DynamicJsonBuffer geoLocation;
+          JsonObject &res = geoLocation.parseObject(payload);
+          String longtitude = res["location"]["lng"];
+          String latitude = res["location"]["lat"];
+          geoLocation.clear();
+          lon = longtitude;
+          lat = latitude;
+        }
+      }
+      else
+      {
+        Serial.printf("[HTTPS] POST... failed, error: %s\n", https.errorToString(httpCode).c_str());
+      }
+
+      https.end();
+    }
+    else
+    {
+      Serial.printf("[HTTPS] Unable to connect\n");
+    }
+  }
+}
+//=====================================================================================
+
+//=====================================================================================Get Json String from Wifiscan
+String getWifiJsonString(){
+  
 }
