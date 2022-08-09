@@ -426,65 +426,105 @@ void Set_Time_and_Date()
   Serial.println("Setting Date and Time from Internet is successful.");
 }
 
-
 //=====================================================================================Get Coordinate from google geolocationApi
 void Get_location()
 {
-  if (WiFi.status() == WL_CONNECTED)
-  {
-    std::unique_ptr<BearSSL::WiFiClientSecure> client(new BearSSL::WiFiClientSecure);
-    client->setInsecure();
-    HTTPClient https;
 
-    String url = "https://www.googleapis.com/geolocation/v1/geolocate?key=" + googleKey;
-    String json = "{\"wifiAccessPoints\": [{\"macAddress\": \"F4:09:D8:B7:46:25\",\"signalStrength\": -54,\"signalToNoiseRatio\": 0},{\"macAddress\": \"74:DA:38:DB:E7:C0\",\"signalStrength\": -43,\"signalToNoiseRatio\": 0}]}";
+  String json = getWifiJsonString();
+  if (json.length())
+    if (WiFi.status() == WL_CONNECTED)
+    {
+      std::unique_ptr<BearSSL::WiFiClientSecure> client(new BearSSL::WiFiClientSecure);
+      client->setInsecure();
+      HTTPClient https;
 
-    Serial.print("[HTTPS] begin...\n");
-    if (https.begin(*client, url))
-    { // HTTPS
+      String url = "https://www.googleapis.com/geolocation/v1/geolocate?key=" + googleKey;
 
-      Serial.print("[HTTPS] POST...\n");
-      https.addHeader("Content-Type", "application/json");
-      // start connection and send HTTP header
-      int httpCode = https.POST(json);
+      Serial.print("[HTTPS] begin...\n");
+      if (https.begin(*client, url))
+      { // HTTPS
 
-      // httpCode will be negative on error
-      if (httpCode > 0)
-      {
-        // HTTP header has been send and Server response header has been handled
-        Serial.printf("[HTTPS] POST... code: %d\n", httpCode);
+        Serial.print("[HTTPS] POST...\n");
+        https.addHeader("Content-Type", "application/json");
+        // start connection and send HTTP header
+        int httpCode = https.POST(json);
 
-        // file found at server
-        if (httpCode == HTTP_CODE_OK)
+        // httpCode will be negative on error
+        if (httpCode > 0)
         {
-          String payload = https.getString();
-          // Serial.println(payload);
+          // HTTP header has been send and Server response header has been handled
+          Serial.printf("[HTTPS] POST... code: %d\n", httpCode);
 
-          DynamicJsonBuffer geoLocation;
-          JsonObject &res = geoLocation.parseObject(payload);
-          String longtitude = res["location"]["lng"];
-          String latitude = res["location"]["lat"];
-          geoLocation.clear();
-          lon = longtitude;
-          lat = latitude;
+          // file found at server
+          if (httpCode == HTTP_CODE_OK)
+          {
+            String payload = https.getString();
+            // Serial.println(payload);
+
+            DynamicJsonBuffer geoLocation;
+            JsonObject &res = geoLocation.parseObject(payload);
+            String longtitude = res["location"]["lng"];
+            String latitude = res["location"]["lat"];
+            geoLocation.clear();
+            lon = longtitude;
+            lat = latitude;
+
+            Serial.println("Google Geolocation Lat:" + lat + "\tLong:" + lon);
+          }
         }
+        else
+        {
+          Serial.printf("[HTTPS] POST... failed, error: %s\n", https.errorToString(httpCode).c_str());
+        }
+
+        https.end();
       }
       else
       {
-        Serial.printf("[HTTPS] POST... failed, error: %s\n", https.errorToString(httpCode).c_str());
+        Serial.printf("[HTTPS] Unable to connect\n");
       }
-
-      https.end();
     }
-    else
-    {
-      Serial.printf("[HTTPS] Unable to connect\n");
-    }
-  }
 }
 //=====================================================================================
 
 //=====================================================================================Get Json String from Wifiscan
-String getWifiJsonString(){
-  
+String getWifiJsonString()
+{
+  String json;
+
+  uint8_t n = WiFi.scanNetworks();
+  Serial.println("scan done");
+  if (n == 0)
+    Serial.println("no networks found");
+  else
+  {
+    Serial.println(String(n) + " networks found...");
+    json += "{\"wifiAccessPoints\": [\n";
+    for (int i = 0; i < n; ++i)
+    {
+
+      json += "{\n";
+      json += "\"macAddress\" : \"";
+      json += (WiFi.BSSIDstr(i));
+      json += "\",\n";
+      json += "\"signalStrength\": ";
+      json += WiFi.RSSI(i);
+      json += "\n";
+
+      if (i < n - 1)
+      {
+        Serial.println("},");
+        json += "},\n";
+      }
+      else
+      {
+        Serial.println("}");
+        json += "}\n";
+      }
+    }
+    json += ("]\n");
+    json += ("}\n");
+  }
+  Serial.println(json);
+  return json;
 }
