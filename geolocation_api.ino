@@ -59,7 +59,7 @@ float forecast_temp_max[4];
 // If using a city name : String current_serverPath = "http://api.openweathermap.org/data/2.5/weather?q=" + city + "," + countryCode + "&units=" + units + "&APPID=" + openWeatherMapApiKey;
 // If using a city ID : String current_serverPath = "http://api.openweathermap.org/data/2.5/weather?id=" + city + "&units=" + units + "&APPID=" + openWeatherMapApiKey;
 //----------------------------------------openweathermap API configuration
-String openWeatherMapApiKey = "8f1fbcd3c4f818ddc07b09bba424e3fe";
+String openWeatherMapApiKey = "xxx";
 
 String city = "Chiang Mai";
 String countryCode = "TH";
@@ -67,7 +67,7 @@ String units = "metric";
 String lon;
 String lat;
 
-String googleKey = "AIzaSyClgL8nocqG0T2Ej9rQk3W_fmz6jXy7SXA";
+String googleKey = "xxxx";
 //----------------------------------------
 
 //----------------------------------------Variable declaration for the json data and defining the ArduinoJson(DynamicJsonBuffer)
